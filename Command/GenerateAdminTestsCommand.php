@@ -2,6 +2,7 @@
 
 namespace Kunstmaan\GeneratorBundle\Command;
 
+use Sensio\Bundle\GeneratorBundle\Command\GenerateDoctrineCommand;
 use Sensio\Bundle\GeneratorBundle\Command\GeneratorCommand;
 use Kunstmaan\GeneratorBundle\Generator\AdminTestsGenerator;
 use Symfony\Component\Console\Input\InputOption;
@@ -9,7 +10,7 @@ use Sensio\Bundle\GeneratorBundle\Command\Validators;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputInterface;
 
-class GenerateAdminTestsCommand extends GeneratorCommand
+class GenerateAdminTestsCommand extends GenerateDoctrineCommand
 {
 
     protected function configure()

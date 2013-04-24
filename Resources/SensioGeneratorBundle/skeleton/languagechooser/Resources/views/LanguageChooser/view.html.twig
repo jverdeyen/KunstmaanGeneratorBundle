@@ -1,0 +1,8 @@
+<center>Language chooser</center>
+<br />
+<center>
+    {% for language in languagechooser_languages %}
+        <a href="{{ path('_slug', {'_locale': language }) }}">{{ language }}</a>
+        {% if not loop.last %} | {% endif %}
+    {% endfor %}
+</center>

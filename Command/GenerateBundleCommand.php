@@ -1,6 +1,8 @@
 <?php
 
 namespace Kunstmaan\GeneratorBundle\Command;
+
+use Sensio\Bundle\GeneratorBundle\Command\GenerateDoctrineCommand;
 use Sensio\Bundle\GeneratorBundle\Command\GeneratorCommand;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -19,7 +21,7 @@ use Sensio\Bundle\GeneratorBundle\Command\Helper\DialogHelper;
 /**
  * Generates bundles.
  */
-class GenerateBundleCommand extends GeneratorCommand
+class GenerateBundleCommand extends GenerateDoctrineCommand
 {
     private $generator;
 
