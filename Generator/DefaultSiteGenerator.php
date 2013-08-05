@@ -242,6 +242,7 @@ class DefaultSiteGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Gene
 
         try {
             $this->generateSkeletonBasedClass($skeletonDir, $dirPath, 'DefaultSiteFixtures', $parameters);
+            $this->generateSkeletonBasedClass($skeletonDir, $dirPath, 'NavigationFixtures', $parameters);
         } catch (\Exception $error) {
             throw new \RuntimeException($error->getMessage());
         }

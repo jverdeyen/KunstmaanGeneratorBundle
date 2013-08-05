@@ -54,6 +54,7 @@ class ArticleFixtures extends AbstractFixture implements OrderedFixtureInterface
         $translations[] = array('language' => 'en', 'callback' => function($page, $translation, $seo) {
             $translation->setTitle('Article overview page');
             $translation->setSlug('article-overview');
+            $translation->setWeight(10);
         });
 
         $options = array(
