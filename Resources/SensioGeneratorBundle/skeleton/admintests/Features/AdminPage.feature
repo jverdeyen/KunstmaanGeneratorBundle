@@ -13,7 +13,6 @@ Feature: AdminPage
   @javascript @ensureCleanSession
   Scenario: Add a new page
     Given I log in as "admin"
-    And I am on the admin home page
     And I add contentpage "ContentsubPage"
     Then I should see "ContentsubPage"
 

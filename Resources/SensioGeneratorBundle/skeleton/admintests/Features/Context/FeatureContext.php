@@ -42,6 +42,7 @@ class FeatureContext extends AbstractContext
         $this->useContext('role_context', new RoleContext($parameters));
         $this->useContext('media_context', new MediaContext($parameters));
         $this->useContext('page_context', new PageContext($parameters));
+        $this->useContext('article_context', new ArticleContext($parameters));
     }
 
     /**
@@ -196,7 +197,10 @@ class FeatureContext extends AbstractContext
             "bulkupload" => $this->lang."/admin/media/bulkupload/1",
             "admin home" => $this->lang."/admin/nodes/1",
             "home" => $this->lang."/admin/nodes/1",
-            "pages" => $this->lang."/admin/nodes"
+            "pages" => $this->lang."/admin/nodes",
+            "news" => $this->lang."/admin/newspage/",
+            "authors" => $this->lang."/admin/newsauthor/",
+            "create new author" => $this->lang."/admin/newsauthor/add"
         );
 
         return $pages[$pageName];
@@ -354,6 +358,46 @@ class FeatureContext extends AbstractContext
         } else {
             $message = sprintf('The button was not found');
             throw new ExpectationException($message, $this->getSession());
+        }
+    }
+
+    /**
+     * @param string $pageType The type of the page - contentpage, formpage
+     * @param string $pageName The name of the page
+     *
+     * @Given /^I add (.*) "([^"]*)"$/
+     *
+     * @throws ElementNotFoundException
+     */
+    public function iAddPage($pageType, $pageName)
+    {
+        $this->iAmOnASpecificPage("admin home");
+
+        $records = array(
+            "addpage_title" => $this->fixStepArgument($pageName),
+            "addpage_type" => $this->fixStepArgument($pageType)
+        );
+
+        $this->pressButton("Add subpage");
+
+        $page = $this->getSession()->getPage();
+        $modals = $page->findAll('xpath', "//div[contains(@id, 'add-subpage-modal')]");
+
+        foreach ($modals as $modal) {
+            if ($modal->hasClass('in')) {
+                foreach ($records as $field => $value) {
+                    $modalField = $modal->findField($field);
+                    if (null === $modalField) {
+                        throw new ElementNotFoundException(
+                            $this->getSession(), 'form field', 'id|name|label|value', $field
+                        );
+                    }
+                    $modalField->setValue($value);
+                }
+                $this->findAndClickButton($modal, 'xpath', "//form//button[@type='submit']");
+
+                return;
+            }
         }
     }
 

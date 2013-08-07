@@ -26,44 +26,6 @@ class PageContext extends BehatContext
     }
 
     /**
-     * @param string $pageType The type of the page - contentpage, formpage
-     * @param string $pageName The name of the page
-     *
-     * @Given /^I add (.*) "([^"]*)"$/
-     *
-     * @throws ElementNotFoundException
-     */
-    public function iAddPage($pageType, $pageName)
-    {
-        $records = array(
-            "addpage_title" => $this->getMainContext()->fixStepArgument($pageName),
-            "addpage_type" => $this->getMainContext()->fixStepArgument($pageType)
-        );
-
-        $this->getMainContext()->pressButton("Add subpage");
-
-        $page = $this->getMainContext()->getSession()->getPage();
-        $modals = $page->findAll('xpath', "//div[contains(@id, 'add-subpage-modal')]");
-
-        foreach ($modals as $modal) {
-            if ($modal->hasClass('in')) {
-                foreach ($records as $field => $value) {
-                    $modalField = $modal->findField($field);
-                    if (null === $modalField) {
-                        throw new ElementNotFoundException(
-                            $this->getSession(), 'form field', 'id|name|label|value', $field
-                        );
-                    }
-                    $modalField->setValue($value);
-                }
-                $this->getMainContext()->findAndClickButton($modal, 'xpath', "//form//button[@type='submit']");
-
-                return;
-            }
-        }
-    }
-
-    /**
      * @param string $pageName
      *
      * @Given /^I save page "([^"]*)"$/
