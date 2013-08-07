@@ -10,13 +10,12 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Output\Output;
 
-use Sensio\Bundle\GeneratorBundle\Command\GenerateDoctrineCommand;
 use Sensio\Bundle\GeneratorBundle\Generator;
 
 /**
  * Generates classes based on the AbstractArticle classes from KunstmaanArticleBundle
  */
-class GenerateArticleCommand extends GenerateDoctrineCommand
+class GenerateArticleCommand extends KunstmaanGeneratorCommand
 {
 
     /**
@@ -51,48 +50,48 @@ EOT
             ->setName('kuma:generate:article');
     }
 
-    /**
-     * Executes the command.
-     *
-     * @param InputInterface  $input  An InputInterface instance
-     * @param OutputInterface $output An OutputInterface instance
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function getWelcomeText()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Article Generation');
+        return 'Article Generation';
+    }
 
-        GeneratorUtils::ensureOptionsProvided($input, array('namespace', 'entity'));
+    protected function getOptionsRequired()
+    {
+        return array('namespace', 'entity');
+    }
 
-        $namespace = Validators::validateBundleNamespace($input->getOption('namespace'));
+    protected function doExecute()
+    {
+        $namespace = Validators::validateBundleNamespace($this->assistant->getOption('namespace'));
         $bundle = strtr($namespace, array('\\' => ''));
-        $entity = ucfirst($input->getOption('entity'));
+        $entity = ucfirst($this->assistant->getOption('entity'));
 
-        $prefix = $input->getOption('prefix');
-        $dummydata = $input->getOption('dummydata');
+        $prefix = GeneratorUtils::cleanPrefix($this->assistant->getOption('prefix'));
+        $dummyData = $this->assistant->getOption('dummydata');
 
         $bundle = $this
             ->getApplication()
             ->getKernel()
             ->getBundle($bundle);
 
+        /** @var $generator ArticleGenerator */
         $generator = $this->getGenerator($this->getApplication()->getKernel()->getBundle("KunstmaanGeneratorBundle"));
-        $generator->generate($bundle, $entity, $prefix, $dummydata, $output);
+        $generator->setAssistant($this->assistant);
+        $generator->generate($bundle, $entity, $prefix, $dummyData);
 
-        $output->writeln('Make sure you update your database first before using the created entities:');
-        $output->writeln('    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>');
-        $output->writeln('    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>');
-        $output->writeln('');
+        $this->assistant->writeLine(array(
+            'Make sure you update your database first before using the created entities:',
+            '    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>',
+            '    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>',
+            ''
+        ));
     }
 
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function doInteract()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Welcome to the Kunstmaan Article generator');
+        $this->assistant->writeSection('Welcome to the Kunstmaan Article generator');
 
-        $inputAssistant = GeneratorUtils::getInputAssistant($input, $output, $dialog, $this->getApplication()->getKernel());
-
-        $inputAssistant->askForNamespace(array(
+        $this->askForNamespace(array(
             '',
             'This command helps you to generate the Article classes.',
             'You must specify the namespace of the bundle where you want to generate the classes in.',
@@ -101,10 +100,10 @@ EOT
         ));
 
         // entity
-        $entity = $input->getOption('entity') ? $input->getOption('entity') : null;
+        $entity = $this->assistant->getOptionOrDefault('entity');
 
         if (is_null($entity)) {
-            $output->writeln(array(
+            $this->assistant->writeLine(array(
                 '',
                 'The name of your article entity: <comment>News</comment>',
                 '',
@@ -118,11 +117,11 @@ EOT
                 }
             };
 
-            $entity = $dialog->askAndValidate($output, $dialog->getQuestion('entity', $entity), $entityValidation, false, $entity);
-            $input->setOption('entity', $entity);
+            $entity = $this->assistant->askAndValidate('Entity Name', $entityValidation, 'News');
+            $this->assistant->setOption('entity', $entity);
         }
 
-        $inputAssistant->askForPrefix();
+        $this->askForPrefix();
     }
 
     protected function createGenerator()

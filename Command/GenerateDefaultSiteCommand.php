@@ -4,13 +4,11 @@ namespace Kunstmaan\GeneratorBundle\Command;
 
 
 use Kunstmaan\GeneratorBundle\Helper\GeneratorUtils;
-use Kunstmaan\GeneratorBundle\Helper\InputAssistant;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Output\Output;
 
-use Sensio\Bundle\GeneratorBundle\Command\GenerateDoctrineCommand;
 use Sensio\Bundle\GeneratorBundle\Generator;
 
 use Kunstmaan\GeneratorBundle\Generator\DefaultSiteGenerator;
@@ -20,7 +18,7 @@ use Symfony\Component\HttpKernel\Kernel;
 /**
  * Generates a default website based on Kunstmaan bundles
  */
-class GenerateDefaultSiteCommand extends GenerateDoctrineCommand
+class GenerateDefaultSiteCommand extends KunstmaanGeneratorCommand
 {
 
     /**
@@ -49,23 +47,22 @@ EOT
             ->setName('kuma:generate:default-site');
     }
 
-    /**
-     * Executes the command.
-     *
-     * @param InputInterface  $input  An InputInterface instance.
-     * @param OutputInterface $output An OutputInterface instance.
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function getWelcomeText()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Site Generation');
+        return 'Site Generation';
+    }
 
-        GeneratorUtils::ensureOptionsProvided($input, array('namespace'));
+    protected function getOptionsRequired()
+    {
+        return array('namespace');
+    }
 
-        $namespace = Validators::validateBundleNamespace($input->getOption('namespace'));
+    protected function doExecute()
+    {
+        $namespace = Validators::validateBundleNamespace($this->assistant->getOption('namespace'));
         $bundle = strtr($namespace, array('\\' => ''));
 
-        $prefix = GeneratorUtils::cleanPrefix($input->getOption('prefix'));
+        $prefix = GeneratorUtils::cleanPrefix($this->assistant->getOption('prefix'));
         $bundle = $this
             ->getApplication()
             ->getKernel()
@@ -73,21 +70,22 @@ EOT
 
         $rootDir = $this->getApplication()->getKernel()->getRootDir();
 
+        /** @var $generator DefaultSiteGenerator */
         $generator = $this->getGenerator($this->getApplication()->getKernel()->getBundle("KunstmaanGeneratorBundle"));
-        $generator->generate($bundle, $prefix, $rootDir, $output);
+        $generator->setAssistant($this->assistant);
+
+        $generator->generate($bundle, $prefix, $rootDir);
     }
+
 
     /**
      * {@inheritdoc}
      */
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function doInteract()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Welcome to the Kunstmaan default site generator');
+        $this->assistant->writeLine('Welcome to the Kunstmaan default site generator');
 
-        $inputAssistant = GeneratorUtils::getInputAssistant($input, $output, $dialog, $this->getApplication()->getKernel());
-
-        $inputAssistant->askForNamespace(array(
+        $this->askForNamespace(array(
             '',
             'This command helps you to generate a default site setup.',
             'You must specify the namespace of the bundle where you want to generate the default site setup.',
@@ -95,7 +93,7 @@ EOT
             '',
         ));
 
-        $inputAssistant->askForPrefix();
+        $this->askForPrefix();
     }
 
     protected function createGenerator()

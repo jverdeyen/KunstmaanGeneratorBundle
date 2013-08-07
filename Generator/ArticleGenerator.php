@@ -11,7 +11,7 @@ use Symfony\Component\Filesystem\Filesystem;
 /**
  * Generates an Article section
  */
-class ArticleGenerator extends Generator
+class ArticleGenerator extends KunstmaanGenerator
 {
 
     /**
@@ -32,337 +32,174 @@ class ArticleGenerator extends Generator
     /**
      * @var bool
      */
-    private $multilanguage;
+    private $multiLanguage;
 
     /**
      * @param Filesystem $filesystem    The filesytem
      * @param string     $skeletonDir   The skeleton directory
-     * @param bool       $multilanguage If the site is multilanguage
+     * @param bool       $multiLanguage If the site is multilanguage
      */
-    public function __construct(Filesystem $filesystem, $skeletonDir, $multilanguage)
+    public function __construct(Filesystem $filesystem, $skeletonDir, $multiLanguage)
     {
         $this->filesystem = $filesystem;
         $this->skeletonDir = $skeletonDir;
         $this->fullSkeletonDir = __DIR__.'/../Resources/SensioGeneratorBundle/skeleton' . $skeletonDir;
-        $this->multilanguage = $multilanguage;
+        $this->multiLanguage = $multiLanguage;
     }
 
+
+    /** @var Bundle */
+    private $bundle;
+    /** @var string */
+    private $entity;
+    /** @var string */
+    private $prefix;
+
     /**
-     * @param Bundle          $bundle The bundle
+     * @param Bundle          $bundle
      * @param string          $entity
-     * @param string          $prefix The prefix
-     * @param bool            $dummydata
-     * @param OutputInterface $output
+     * @param string          $prefix
+     * @param bool            $dummyData
      */
-    public function generate(Bundle $bundle, $entity, $prefix, $dummydata, OutputInterface $output)
+    public function generate(Bundle $bundle, $entity, $prefix, $dummyData)
     {
-        $parameters = array(
+        $this->bundle = $bundle;
+        $this->entity = $entity;
+        $this->prefix = $prefix;
+        $this->parameters = array(
             'namespace'         => $bundle->getNamespace(),
             'bundle'            => $bundle,
             'prefix'            => GeneratorUtils::cleanPrefix($prefix),
             'entity_class'      => $entity,
         );
 
-        $this->generateEntities($bundle, $entity, $parameters, $output);
-        $this->generateRepositories($bundle, $entity, $parameters, $output);
-        $this->generateForm($bundle, $entity, $parameters, $output);
-        $this->generateAdminList($bundle, $entity, $parameters, $output);
-        $this->generateController($bundle, $entity, $parameters, $output);
-        $this->generatePagepartConfigs($bundle, $entity, $parameters, $output);
-        $this->generateTemplates($bundle, $entity, $parameters, $output);
-        $this->generateRouting($bundle, $entity, $parameters, $output);
-        $this->generateMenu($bundle, $entity, $parameters, $output);
-        $this->generateServices($bundle, $entity, $parameters, $output);
-        if ($dummydata) {
-            $this->generateFixtures($bundle, $entity, $parameters, $output);
+        $this->executeSteps(array(
+            'Generating entities' => 'generateEntities',
+            'Generating repositories' => 'generateRepositories',
+            'Generating Forms' => 'generateForm',
+            'Generating AdminList Configurators' => 'generateAdminList',
+            'Generating Controllers' => 'generateController',
+            'Generating PagePart Configurators' => 'generatePagePartConfigs',
+            'Generating Twig Templates' => 'generateTemplates',
+            'Generating Routing' => 'generateRouting',
+            'Generating Menu' => 'generateMenu',
+            'Generating Services' => 'generateServices'
+        ));
+
+        if ($dummyData) {
+            $this->executeStep('Generate Fixtures', function() {
+                $this->generateFixtures();
+            });
         }
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     */
-    public function generateServices(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateServices()
     {
-        $dirPath = sprintf("%s/Resources/config", $bundle->getPath());
+        $dirPath = sprintf("%s/Resources/config", $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Resources/config", $this->skeletonDir);
-        $routing = $this->render($skeletonDir . '/services.yml', $parameters);
+        $routing = $this->render($skeletonDir . '/services.yml', $this->parameters);
         GeneratorUtils::append($routing, $dirPath . '/services.yml');
-
-        $output->writeln('Generating services : <info>OK</info>');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateMenu(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateMenu()
     {
-        $dirPath = sprintf("%s/Helper/Menu", $bundle->getPath());
+        $dirPath = sprintf("%s/Helper/Menu", $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Helper/Menu", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'MenuAdaptor', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating menu : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'MenuAdaptor');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     */
-    public function generateRouting(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateRouting()
     {
-        $dirPath = sprintf("%s/Resources/config", $bundle->getPath());
+        $dirPath = sprintf("%s/Resources/config", $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Resources/config", $this->skeletonDir);
-        if($this->multilanguage) {
-            $routing = $this->render($skeletonDir . '/routing_multilanguage.yml', $parameters);
+
+        if($this->multiLanguage) {
+            $routing = $this->render($skeletonDir . '/routing_multilanguage.yml', $this->parameters);
         } else {
-            $routing = $this->render($skeletonDir . '/routing_singlelanguage.yml', $parameters);
+            $routing = $this->render($skeletonDir . '/routing_singlelanguage.yml', $this->parameters);
         }
         GeneratorUtils::append($routing, $dirPath . '/routing.yml');
-
-        $output->writeln('Generating routing : <info>OK</info>');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     */
-    public function generateTemplates(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateTemplates()
     {
-        $dirPath = sprintf("%s/Resources/views", $bundle->getPath());
+        $dirPath = sprintf("%s/Resources/views", $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Resources/views", $this->skeletonDir);
         $fullSkeletonDir = sprintf("%s/Resources/views", $this->fullSkeletonDir);
 
-        $this->filesystem->copy($fullSkeletonDir . '/OverviewPage/view.html.twig', $dirPath . '/' . $entity . '/' . $entity . 'OverviewPage/view.html.twig', true);
-        GeneratorUtils::prepend("{% extends '" . $bundle->getName() .":Layout:layout.html.twig' %}\n", $dirPath . '/' . $entity . '/' . $entity . 'OverviewPage/view.html.twig');
+        $this->filesystem->copy($fullSkeletonDir . '/OverviewPage/view.html.twig', $dirPath . '/' . $this->entity . '/' . $this->entity . 'OverviewPage/view.html.twig', true);
+        GeneratorUtils::prepend("{% extends '" . $this->bundle->getName() .":Layout:layout.html.twig' %}\n", $dirPath . '/' . $this->entity . '/' . $this->entity . 'OverviewPage/view.html.twig');
 
-        $this->filesystem->copy($fullSkeletonDir . '/Page/view.html.twig', $dirPath . '/' . $entity . '/' . $entity . 'Page/view.html.twig', true);
-        GeneratorUtils::prepend("{% extends '" . $bundle->getName() .":Layout:layout.html.twig' %}\n", $dirPath . '/' . $entity . '/' . $entity . 'Page/view.html.twig');
+        $this->filesystem->copy($fullSkeletonDir . '/Page/view.html.twig', $dirPath . '/' . $this->entity . '/' . $this->entity . 'Page/view.html.twig', true);
+        GeneratorUtils::prepend("{% extends '" . $this->bundle->getName() .":Layout:layout.html.twig' %}\n", $dirPath . '/' . $this->entity . '/' . $this->entity . 'Page/view.html.twig');
 
-        $this->renderFile($skeletonDir . '/PageAdminList/list.html.twig', $dirPath . '/AdminList/' . '/' . $entity . '/' . $entity . 'PageAdminList/list.html.twig', $parameters );
-
-        $output->writeln('Generating twig templates : <info>OK</info>');
+        $this->renderFile($skeletonDir . '/PageAdminList/list.html.twig', $dirPath . '/AdminList/' . '/' . $this->entity . '/' . $this->entity . 'PageAdminList/list.html.twig', $this->parameters );
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateController(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateController()
     {
-        $dirPath = sprintf("%s/Controller/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/Controller/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Controller", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'PageAdminListController', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'AuthorAdminListController', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating controllers : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'PageAdminListController', $this->parameters);
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'AuthorAdminListController', $this->parameters);
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generatePagepartConfigs(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generatePagePartConfigs()
     {
-        $dirPath = sprintf("%s/PagePartAdmin/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/PagePartAdmin/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/PagePartAdmin", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'OverviewPagePagePartAdminConfigurator', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'PagePagePartAdminConfigurator', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating PagePart configurators : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'OverviewPagePagePartAdminConfigurator');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'PagePagePartAdminConfigurator');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateAdminList(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateAdminList()
     {
-        $dirPath = sprintf("%s/AdminList/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/AdminList/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/AdminList", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'PageAdminListConfigurator', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'AuthorAdminListConfigurator', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating AdminList configurators : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'PageAdminListConfigurator', $this->parameters);
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'AuthorAdminListConfigurator', $this->parameters);
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateForm(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateForm()
     {
-        $dirPath = sprintf("%s/Form/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/Form/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Form", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'OverviewPageAdminType', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'PageAdminType', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'AuthorAdminType', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating forms : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'OverviewPageAdminType', $this->parameters);
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'PageAdminType', $this->parameters);
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'AuthorAdminType', $this->parameters);
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateRepositories(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateRepositories()
     {
-        $dirPath = sprintf("%s/Repository/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/Repository/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Repository", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'OverviewPageRepository', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'PageRepository', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'AuthorRepository', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating repositories : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'OverviewPageRepository');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'PageRepository');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'AuthorRepository');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateEntities(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateEntities()
     {
-        $dirPath = sprintf("%s/Entity/" . $entity, $bundle->getPath());
+        $dirPath = sprintf("%s/Entity/" . $this->entity, $this->bundle->getPath());
         $skeletonDir = sprintf("%s/Entity", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'OverviewPage', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'Page', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'Author', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating entities : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'OverviewPage');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'Page');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'Author');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param string          $entity     The name of the entity
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateFixtures(Bundle $bundle, $entity, array $parameters, OutputInterface $output)
+    public function generateFixtures()
     {
-        $dirPath = $bundle->getPath() . '/DataFixtures/ORM';
+        $dirPath = $this->bundle->getPath() . '/DataFixtures/ORM';
         $skeletonDir = $this->skeletonDir . '/DataFixtures/ORM';
 
-        try {
-            $this->generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, 'ArticleFixtures', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating fixtures : <info>OK</info>');
+        $this->generateSkeletonBasedClass($skeletonDir, $this->entity, $dirPath, 'ArticleFixtures');
     }
 
     /**
@@ -374,8 +211,12 @@ class ArticleGenerator extends Generator
      *
      * @throws \RuntimeException
      */
-    private function generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, $className, array $parameters)
+    protected function generateSkeletonBasedClass($skeletonDir, $entity, $dirPath, $className, array $parameters = null)
     {
+        if (is_null($parameters)) {
+            $parameters = $this->parameters;
+        }
+
         $classPath = sprintf("%s/%s.php", $dirPath, $entity . $className);
         $skeletonPath = sprintf("%s/%s.php", $skeletonDir, $className);
         if (file_exists($classPath)) {
@@ -383,5 +224,4 @@ class ArticleGenerator extends Generator
         }
         $this->renderFile($skeletonPath, $classPath, $parameters);
     }
-
 }

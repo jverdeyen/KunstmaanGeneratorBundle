@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Generates all classes for an admin list
  */
-class AdminListGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Generator
+class AdminListGenerator extends KunstmaanGenerator
 {
 
     /**
@@ -26,11 +26,6 @@ class AdminListGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Genera
      */
     private $skeletonDir;
 
-    private $dialog;
-
-    public function setDialog($dialog) {
-        $this->dialog = $dialog;
-    }
 
     /**
      * @param Filesystem $filesystem  The filesystem
@@ -46,45 +41,32 @@ class AdminListGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Genera
      * @param Bundle          $bundle   The bundle
      * @param string          $entity   The entity name
      * @param ClassMetadata   $metadata The meta data
-     * @param OutputInterface $output
      *
      * @internal param bool $generateAdminType True if we need to specify the admin type
      *
      * @return void
      */
-    public function generate(Bundle $bundle, $entity, ClassMetadata $metadata, OutputInterface $output)
+    public function generate(Bundle $bundle, $entity, ClassMetadata $metadata)
     {
         $parts = explode('\\', $entity);
         $entityName = array_pop($parts);
         $generateAdminType = !method_exists($entity, 'getAdminType');
 
         if ($generateAdminType) {
-            try {
+            $this->executeStep('Generating the Type code', function() use ($bundle, $entityName, $metadata) {
                 $this->generateAdminType($bundle, $entityName, $metadata);
-                $output->writeln('Generating the Type code: <info>OK</info>');
-            } catch (\Exception $error) {
-                $output->writeln($this->dialog->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
-                $output->writeln('Generating the Type code: <error>ERROR</error>');
-            }
+            });
         }
 
-        try {
+        $this->executeStep('Generating the Configuration code', function() use ($bundle, $entityName, $metadata, $generateAdminType) {
             $this->generateConfiguration($bundle, $entityName, $metadata, $generateAdminType);
-            $output->writeln('Generating the Configuration code: <info>OK</info>');
-        } catch (\Exception $error) {
-            $output->writeln($this->dialog->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
-            $output->writeln('Generating the Configuration code: <error>ERROR</error>');
-        }
+        });
 
-
-        try {
+        $this->executeStep('Generating the Controller code', function() use ($bundle, $entityName, $metadata) {
             $this->generateController($bundle, $entityName, $metadata);
-            $output->writeln('Generating the Controller code: <info>OK</info>');
-        } catch (\Exception $error) {
-            $output->writeln($this->dialog->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error'));
-            $output->writeln('Generating the Controller code: <error>ERROR</error>');
-        }
+        });
     }
+
 
     /**
      * @param Bundle        $bundle            The bundle

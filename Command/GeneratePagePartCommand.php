@@ -18,19 +18,8 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 /**
  * Generates a new pagepart
  */
-class GeneratePagePartCommand extends GenerateDoctrineCommand
+class GeneratePagePartCommand extends KunstmaanGeneratorCommand
 {
-
-    /**
-     * @var OutputInterface
-     */
-    private $output;
-
-    /**
-     * @var DialogHelper
-     */
-    private $dialog;
-
     /**
      * @var string
      */
@@ -71,14 +60,16 @@ EOT
             ->setName('kuma:generate:pagepart');
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
-    {
-        $this->dialog->writeSection($output, 'PagePart generation');
 
+    function getWelcomeText()
+    {
+        return 'PagePart Generation';
+    }
+
+    protected function doExecute()
+    {
         $bundle = $this->getContainer()->get('kernel')->getBundle($this->bundleName);
+
         $fields = array();
         foreach ($this->fields as $fieldInfo) {
             $fields[] = $this->getEntityFields($fieldInfo['name'], $fieldInfo['type'], $fieldInfo['extra']);
@@ -86,27 +77,23 @@ EOT
 
         $this->createGenerator()->generate($bundle, $this->pagepartName, $this->prefix, $fields, $this->sections);
 
-        $this->dialog->writeSection($output, 'PagePart successfully created', 'bg=green;fg=black');
-        $this->output->writeln('Make sure you update your database first before you test the pagepart:');
-        $this->output->writeln('    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>');
-        $this->output->writeln('    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>');
-        $this->output->writeln('');
+        $this->assistant->writeSection('PagePart successfully created', 'bg=green;fg=black');
+        $this->assistant->writeLine(array(
+            'Make sure you update your database first before you test the pagepart:',
+            '    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>',
+            '    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>',
+            ''));
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function doInteract()
     {
-        $this->dialog = $this->getDialogHelper();
-        $this->output = $output;
-        $this->dialog->writeSection($output, 'Welcome to the Kunstmaan pagepart generator');
+        $this->assistant->writeSection('Welcome to the Kunstmaan pagepart generator');
 
         if (!$this->isBundleAvailable('KunstmaanPagePartBundle')) {
             $this->writeError('KunstmaanPagePartBundle not found', true);
         }
 
-        $output->writeln(array("This command helps you to generate a new pagepart.\n"));
+        $this->assistant->writeLine(array("This command helps you to generate a new pagepart.\n"));
 
         /**
          * Ask for which bundle we need to create the pagepart

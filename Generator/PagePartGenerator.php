@@ -6,7 +6,6 @@ use Doctrine\ORM\Mapping\ClassMetadataInfo;
 use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\Tools\EntityGenerator;
 use Kunstmaan\GeneratorBundle\Helper\GeneratorUtils;
-use Sensio\Bundle\GeneratorBundle\Generator\Generator;
 use Symfony\Bridge\Doctrine\RegistryInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -16,7 +15,7 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * Generates all classes/files for a new pagepart
  */
-class PagePartGenerator extends Generator
+class PagePartGenerator extends KunstmaanGenerator
 {
 
     /**
@@ -99,10 +98,12 @@ class PagePartGenerator extends Generator
         $this->fields = $fields;
         $this->sections = $sections;
 
-        $this->generateEntity();
-        $this->generateFormType();
-        $this->generateResourceTemplate();
-        $this->generateSectionConfig();
+        $this->executeSteps(array(
+            'Generating Entity' => 'generateEntity',
+            'Generating Form Type' => 'generateFormType',
+            'Generating Twig Templates' => 'generateResourceTemplate',
+            'Updating Section Config' => 'generateSectionConfig',
+        ));
     }
 
     /**
@@ -161,8 +162,6 @@ class PagePartGenerator extends Generator
 
         $this->filesystem->mkdir(dirname($entityPath));
         file_put_contents($entityPath, $entityCode);
-
-        $this->output->writeln('Generating entity : <info>OK</info>');
     }
 
     /**
@@ -182,8 +181,6 @@ class PagePartGenerator extends Generator
             'fields' => $this->fields
         );
         $this->renderFile('/Form/PageParts/AdminType.php', $savePath, $params);
-
-        $this->output->writeln('Generating form type : <info>OK</info>');
     }
 
     /**
@@ -198,8 +195,6 @@ class PagePartGenerator extends Generator
             'fields' => $this->fields
         );
         $this->renderFile('/Resources/views/PageParts/view.html.twig', $savePath, $params);
-
-        $this->output->writeln('Generating template : <info>OK</info>');
     }
 
     /**
@@ -222,8 +217,6 @@ class PagePartGenerator extends Generator
                 $ymlData = Yaml::dump($data, $inline = 2, $indent = 4, $exceptionOnInvalidType = false, $objectSupport = false);
                 file_put_contents($dir.$section, $ymlData);
             }
-
-            $this->output->writeln('Updating section config : <info>OK</info>');
         }
     }
 

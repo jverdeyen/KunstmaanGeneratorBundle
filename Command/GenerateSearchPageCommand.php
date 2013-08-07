@@ -16,7 +16,7 @@ use Sensio\Bundle\GeneratorBundle\Generator;
 /**
  * Generates a SearchPage based on the KunstmaanNodeSearchBundle
  */
-class GenerateSearchPageCommand extends GenerateDoctrineCommand
+class GenerateSearchPageCommand extends KunstmaanGeneratorCommand
 {
 
     /**
@@ -45,23 +45,22 @@ EOT
             ->setName('kuma:generate:searchpage');
     }
 
-    /**
-     * Executes the command.
-     *
-     * @param InputInterface  $input  An InputInterface instance
-     * @param OutputInterface $output An OutputInterface instance
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function getWelcomeText()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Search Page Generation');
+        return 'Search Page Generation';
+    }
 
-        GeneratorUtils::ensureOptionsProvided($input, array('namespace'));
+    protected function getOptionsRequired()
+    {
+        return array('namespace');
+    }
 
-        $namespace = Validators::validateBundleNamespace($input->getOption('namespace'));
+    protected function doExecute()
+    {
+        $namespace = Validators::validateBundleNamespace($this->assistant->getOption('namespace'));
         $bundle = strtr($namespace, array('\\' => ''));
 
-        $prefix = $input->getOption('prefix');
+        $prefix = $this->assistant->getOption('prefix');
         $bundle = $this
             ->getApplication()
             ->getKernel()
@@ -69,23 +68,24 @@ EOT
 
         $rootDir = $this->getApplication()->getKernel()->getRootDir();
 
+        /** @var $generator SearchPageGenerator */
         $generator = $this->getGenerator($this->getApplication()->getKernel()->getBundle("KunstmaanGeneratorBundle"));
-        $generator->generate($bundle, $prefix, $rootDir, $output);
+        $generator->setAssistant($this->assistant);
+        $generator->generate($bundle, $prefix, $rootDir);
 
-        $output->writeln('Make sure you update your database first before using the created entities:');
-        $output->writeln('    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>');
-        $output->writeln('    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>');
-        $output->writeln('');
+        // TODO: Use the 'getRunner' and the 'writeSummary'. Need to return an array with everything that still has to be done.
+        $this->assistant->writeLine(array(
+            'Make sure you update your database first before using the created entities:',
+            '    Directly update your database:          <comment>app/console doctrine:schema:update --force</comment>',
+            '    Create a Doctrine migration and run it: <comment>app/console doctrine:migrations:diff && app/console doctrine:migrations:migrate</comment>',
+            ''));
     }
 
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function doInteract()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Welcome to the SearchPage generator');
+        $this->assistant->writeSection('Welcome to the SearchPage generator');
 
-        $inputAssistant = GeneratorUtils::getInputAssistant($input, $output, $dialog, $this->getApplication()->getKernel());
-
-        $inputAssistant->askForNamespace(array(
+        $this->askForNamespace(array(
             '',
             'This command helps you to generate a SearchPage.',
             'You must specify the namespace of the bundle where you want to generate the SearchPage in.',
@@ -93,7 +93,7 @@ EOT
             '',
         ));
 
-        $inputAssistant->askForPrefix();
+        $this->askForPrefix();
     }
 
     protected function createGenerator()

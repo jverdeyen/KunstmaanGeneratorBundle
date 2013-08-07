@@ -11,7 +11,7 @@ use Symfony\Component\Filesystem\Filesystem;
 /**
  * Generates a SearchPage using KunstmaanSearchBundle and KunstmaanNodeSearchBundle
  */
-class SearchPageGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Generator
+class SearchPageGenerator extends KunstmaanGenerator
 {
 
     /**
@@ -35,61 +35,45 @@ class SearchPageGenerator extends \Sensio\Bundle\GeneratorBundle\Generator\Gener
         $this->skeletonDir = $skeletonDir;
     }
 
+    private $rootDir;
+    /** @var Bundle */
+    private $bundle;
     /**
      * @param Bundle          $bundle  The bundle
      * @param string          $prefix  The prefix
      * @param string          $rootDir The root directory
-     * @param OutputInterface $output
      */
-    public function generate(Bundle $bundle, $prefix, $rootDir, OutputInterface $output)
+    public function generate(Bundle $bundle, $prefix, $rootDir)
     {
-        $parameters = array(
+        $this->parameters = array(
             'namespace'         => $bundle->getNamespace(),
             'bundle'            => $bundle,
             'prefix'            => GeneratorUtils::cleanPrefix($prefix)
         );
+        $this->bundle = $bundle;
+        $this->rootDir = $rootDir;
 
-        $this->generateEntities($bundle, $parameters, $output);
-        $this->generateTemplates($bundle, $parameters, $rootDir, $output);
+        $this->executeSteps(array(
+            'Generating Entities' => 'generateEntities',
+            'Generating Twig Templates' => 'generateTemplates'
+        ));
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param array           $parameters The template parameters
-     * @param string          $rootDir    The root directory
-     * @param OutputInterface $output
-     */
-    public function generateTemplates(Bundle $bundle, array $parameters, $rootDir, OutputInterface $output)
+    public function generateTemplates()
     {
-        $dirPath = $bundle->getPath();
+        $dirPath = $this->bundle->getPath();
         $fullSkeletonDir = $this->skeletonDir . '/Resources/views';
 
         $this->filesystem->copy(__DIR__.'/../Resources/SensioGeneratorBundle/skeleton' . $fullSkeletonDir . '/Pages/Search/SearchPage/view.html.twig', $dirPath . '/Resources/views/Pages/Search/SearchPage/view.html.twig', true);
-        GeneratorUtils::prepend("{% extends '" . $bundle->getName() .":Page:layout.html.twig' %}\n", $dirPath . '/Resources/views/Pages/Search/SearchPage/view.html.twig');
-
-        $output->writeln('Generating Twig Templates : <info>OK</info>');
-
+        GeneratorUtils::prepend("{% extends '" . $this->bundle->getName() .":Page:layout.html.twig' %}\n", $dirPath . '/Resources/views/Pages/Search/SearchPage/view.html.twig');
     }
 
-    /**
-     * @param Bundle          $bundle     The bundle
-     * @param array           $parameters The template parameters
-     * @param OutputInterface $output
-     *
-     * @throws \RuntimeException
-     */
-    public function generateEntities(Bundle $bundle, array $parameters, OutputInterface $output)
+    public function generateEntities()
     {
-        $dirPath = sprintf("%s/Entity/Pages/Search/", $bundle->getPath());
+        $dirPath = sprintf("%s/Entity/Pages/Search/", $this->bundle->getPath());
         $fullSkeletonDir = sprintf("%s/Entity/Pages/Search/", $this->skeletonDir);
 
-        try {
-            $this->generateSkeletonBasedClass($fullSkeletonDir, $dirPath, 'SearchPage', $parameters);
-        } catch (\Exception $error) {
-            throw new \RuntimeException($error->getMessage());
-        }
-
-        $output->writeln('Generating entities : <info>OK</info>');
+        $this->generateSkeletonBasedClass($fullSkeletonDir, $dirPath, 'SearchPage', $this->parameters);
     }
 
     /**

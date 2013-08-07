@@ -2,23 +2,17 @@
 
 namespace Kunstmaan\GeneratorBundle\Command;
 
-use Kunstmaan\GeneratorBundle\Helper\GeneratorUtils;
-use Sensio\Bundle\GeneratorBundle\Command\GeneratorCommand;
 use Kunstmaan\GeneratorBundle\Generator\AdminTestsGenerator;
 use Symfony\Component\Console\Input\InputOption;
 use Sensio\Bundle\GeneratorBundle\Command\Validators;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
 
 /**
  * GenerateAdminTestsCommand
  */
-class GenerateAdminTestsCommand extends GeneratorCommand
+class GenerateAdminTestsCommand extends KunstmaanGeneratorCommand
 {
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure()
     {
         $this
@@ -38,17 +32,20 @@ EOT
             ->setName('kuma:generate:admin-tests');
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function getWelcomeText()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Admin Tests Generation');
+        return 'Admin Tests Generation';
+    }
 
-        GeneratorUtils::ensureOptionsProvided($input, array('namespace'));
+    protected function getOptionsRequired()
+    {
+        return array('namespace');
+    }
 
-        $namespace = Validators::validateBundleNamespace($input->getOption('namespace'));
+
+    protected function doExecute()
+    {
+        $namespace = Validators::validateBundleNamespace($this->assistant->getOption('namespace'));
         $bundle = strtr($namespace, array('\\' => ''));
 
         $bundle = $this
@@ -56,21 +53,17 @@ EOT
             ->getKernel()
             ->getBundle($bundle);
 
+        /** @var $generator AdminTestsGenerator */
         $generator = $this->getGenerator($this->getApplication()->getKernel()->getBundle("KunstmaanGeneratorBundle"));
-        $generator->generate($bundle, $output);
+        $generator->setAssistant($this->assistant);
+        $generator->generate($bundle);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function interact(InputInterface $input, OutputInterface $output)
+    protected function doInteract()
     {
-        $dialog = $this->getDialogHelper();
-        $dialog->writeSection($output, 'Welcome to the Kunstmaan default site generator');
+        $this->assistant->writeSection('Welcome to the Kunstmaan default site generator');
 
-        $inputAssistant = GeneratorUtils::getInputAssistant($input, $output, $dialog, $this->getApplication()->getKernel());
-
-        $inputAssistant->askForNamespace(array(
+        $this->askForNamespace(array(
             '',
             'This command helps you to generate tests to test the admin of the default site setup.',
             'You must specify the namespace of the bundle where you want to generate the tests.',
